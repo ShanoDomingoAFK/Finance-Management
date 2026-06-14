@@ -1,0 +1,655 @@
+import { useState, useEffect, useMemo } from "react";
+
+function computeSSS(s){const sal=Math.min(Math.max(s,4250),29750);const st=Math.round((sal-4250)/500);return Math.min(Math.round((180+st*22.5)*100)/100,1350);}
+function computePhilHealth(s){return Math.round(Math.min(Math.max(s,10000),100000)*0.025*100)/100;}
+function computeHDMF(s){if(s<=1500)return Math.round(s*0.01*100)/100;return Math.min(Math.round(s*0.02*100)/100,200);}
+function computeWHT(s){
+  const sss=computeSSS(s),phic=computePhilHealth(s),hdmf=computeHDMF(s),tx=s-sss-phic-hdmf;
+  let tax=0;
+  if(tx>666667)tax=200833+(tx-666667)*0.35;
+  else if(tx>166667)tax=40833+(tx-166667)*0.32;
+  else if(tx>66667)tax=10833+(tx-66667)*0.30;
+  else if(tx>33333)tax=2500+(tx-33333)*0.25;
+  else if(tx>20833)tax=(tx-20833)*0.20;
+  return{sss,phic,hdmf,tax:Math.round(tax*100)/100,taxable:tx,net:Math.round((tx-tax)*100)/100};
+}
+
+const CATS=[
+  {v:"food",l:"Food & Groceries",i:"🛒"},{v:"dining",l:"Dining Out",i:"🍽️"},
+  {v:"transport",l:"Transport",i:"🚗"},{v:"utilities",l:"Utilities",i:"💡"},
+  {v:"rent",l:"Rent / Housing",i:"🏠"},{v:"health",l:"Health",i:"🏥"},
+  {v:"fitness",l:"Gym & Fitness",i:"💪"},{v:"travel",l:"Travel",i:"✈️"},
+  {v:"entertainment",l:"Entertainment",i:"🎬"},{v:"shopping",l:"Shopping",i:"🛍️"},
+  {v:"date",l:"Date Nights",i:"🌙"},{v:"home",l:"Home",i:"🔧"},
+  {v:"savings",l:"Savings",i:"🏦"},{v:"load",l:"Mobile / Internet",i:"📱"},
+  {v:"pets",l:"Pets",i:"🐾"},{v:"other",l:"Other",i:"📌"},
+];
+const CC={food:"#00956A",dining:"#D44040",transport:"#5A5FE0",utilities:"#0088C0",rent:"#5860CC",health:"#1E9050",fitness:"#008878",travel:"#2858C8",entertainment:"#C81E7A",shopping:"#C05818",date:"#901EC0",home:"#907800",savings:"#008888",load:"#507080",pets:"#A07040",other:"#505050"};
+const ITYPES=[{v:"salary",l:"💼 Salary"},{v:"freelance",l:"💻 Freelance"},{v:"business",l:"🏪 Business"},{v:"rental",l:"🏘️ Rental"},{v:"investment",l:"📈 Investment"},{v:"commission",l:"🤝 Commission"},{v:"other",l:"📌 Other"}];
+const PAY=["Cash","GCash","Maya","Bank Transfer"];
+
+const ICARDS=[
+  {id:"cc1",name:"BPI Amore",bank:"BPI",limit:50000,statementBalance:8420,outstandingBalance:8420,cutDay:28,dueDay:22,color:"#D44040"},
+  {id:"cc2",name:"BDO Cashback",bank:"BDO",limit:80000,statementBalance:15300,outstandingBalance:15300,cutDay:5,dueDay:25,color:"#C07A00"},
+  {id:"cc3",name:"Metrobank Rewards",bank:"Metrobank",limit:60000,statementBalance:3900,outstandingBalance:3900,cutDay:15,dueDay:10,color:"#5A5FE0"},
+];
+const IINC=[
+  {id:"i1",desc:"Monthly Salary",amount:65000,date:"2025-06-01",type:"salary",earner:"You",via:"Bank Transfer"},
+  {id:"i2",desc:"Monthly Salary",amount:52000,date:"2025-06-01",type:"salary",earner:"Partner",via:"Bank Transfer"},
+  {id:"i3",desc:"Freelance Project",amount:8000,date:"2025-06-05",type:"freelance",earner:"You",via:"GCash"},
+  {id:"i4",desc:"Rental Income",amount:12000,date:"2025-06-03",type:"rental",earner:"Joint",via:"Bank Transfer"},
+  {id:"i5",desc:"Stock Dividends",amount:3500,date:"2025-06-08",type:"investment",earner:"Partner",via:"Bank Transfer"},
+];
+const IEXP=[
+  {id:"e1",desc:"S&R Membership",amount:3850,date:"2025-06-02",cat:"food",via:"BPI Amore",earner:"Joint"},
+  {id:"e2",desc:"Meralco Bill",amount:3200,date:"2025-06-03",cat:"utilities",via:"GCash",earner:"Joint"},
+  {id:"e3",desc:"Draft Restaurant",amount:2800,date:"2025-06-04",cat:"date",via:"BPI Amore",earner:"You"},
+  {id:"e4",desc:"Grab Ride",amount:280,date:"2025-06-05",cat:"transport",via:"GCash",earner:"Partner"},
+  {id:"e5",desc:"Netflix + Spotify",amount:899,date:"2025-06-01",cat:"entertainment",via:"BPI Amore",earner:"Joint"},
+  {id:"e6",desc:"Zalora Haul",amount:3600,date:"2025-06-06",cat:"shopping",via:"BDO Cashback",earner:"Partner"},
+  {id:"e7",desc:"Globe Postpaid ×2",amount:1998,date:"2025-06-01",cat:"load",via:"Bank Transfer",earner:"Joint"},
+  {id:"e8",desc:"CrossFit Monthly",amount:2800,date:"2025-06-01",cat:"fitness",via:"Metrobank Rewards",earner:"You"},
+  {id:"e9",desc:"Boracay Deposit",amount:5000,date:"2025-06-07",cat:"travel",via:"BDO Cashback",earner:"Joint"},
+];
+const IBILLS=[
+  {id:"b1",name:"Condo Rent",amount:22000,dueDay:5,paid:true,cat:"rent"},
+  {id:"b2",name:"Meralco",amount:3200,dueDay:10,paid:false,cat:"utilities"},
+  {id:"b3",name:"Globe / PLDT",amount:1998,dueDay:12,paid:true,cat:"load"},
+  {id:"b4",name:"Condo Assoc. Dues",amount:3500,dueDay:15,paid:false,cat:"home"},
+  {id:"b5",name:"Maynilad Water",amount:580,dueDay:18,paid:false,cat:"utilities"},
+  {id:"b6",name:"Pag-IBIG Loan",amount:7800,dueDay:20,paid:false,cat:"rent"},
+  {id:"b7",name:"Car Loan",amount:18000,dueDay:7,paid:true,cat:"transport"},
+];
+const IBUDGETS={food:8000,dining:5000,transport:4000,travel:10000,entertainment:3000,shopping:6000,fitness:5000,date:4000,home:5000,load:2500};
+
+const peso=(n,d=0)=>isNaN(n)||n==null?"₱0":(n<0?"-":"")+"₱"+Math.abs(n).toLocaleString("en-PH",{minimumFractionDigits:d,maximumFractionDigits:d});
+const todayStr=()=>new Date().toISOString().split("T")[0];
+const DAY=9;
+const ci=v=>CATS.find(c=>c.v===v)||{v,l:v,i:"📌"};
+
+// ─── ATOMS ──────────────────────────────────────────────────────────────────
+
+function Ring({pct,color,size=76,stroke=7}){
+  const r=(size-stroke)/2,circ=2*Math.PI*r;
+  const [ap,setAp]=useState(0);
+  useEffect(()=>{const t=setTimeout(()=>setAp(Math.min(pct,100)),100);return()=>clearTimeout(t);},[pct]);
+  return(
+    <svg width={size} height={size} style={{transform:"rotate(-90deg)",flexShrink:0}}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#D4CEC0" strokeWidth={stroke}/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={pct>100?"#D44040":color} strokeWidth={stroke}
+        strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ*(1-ap/100)}
+        style={{transition:"stroke-dashoffset .9s cubic-bezier(.4,0,.2,1)"}}/>
+    </svg>
+  );
+}
+
+function Modal({title,onClose,children}){
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.42)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={onClose}>
+      <div style={{background:"#F5F0E8",borderRadius:16,padding:26,width:"100%",maxWidth:440,border:"1px solid #D0C8BA",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 20px 50px rgba(80,60,40,.18)"}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h3 style={{color:"#2A2218",fontSize:17,fontWeight:700,margin:0}}>{title}</h3>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"#9E9282",cursor:"pointer",fontSize:22,lineHeight:1}}>×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Inp({label,...p}){
+  return(
+    <div style={{marginBottom:12}}>
+      {label&&<label style={{display:"block",color:"#7A6E5C",fontSize:10,marginBottom:5,textTransform:"uppercase",letterSpacing:".07em"}}>{label}</label>}
+      <input {...p} style={{width:"100%",background:"#FAF7F2",border:"1px solid #C4BDAF",borderRadius:8,padding:"9px 12px",color:"#2A2218",fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit",...(p.style||{})}}/>
+    </div>
+  );
+}
+
+function Sel({label,children,...p}){
+  return(
+    <div style={{marginBottom:12}}>
+      {label&&<label style={{display:"block",color:"#7A6E5C",fontSize:10,marginBottom:5,textTransform:"uppercase",letterSpacing:".07em"}}>{label}</label>}
+      <select {...p} style={{width:"100%",background:"#FAF7F2",border:"1px solid #C4BDAF",borderRadius:8,padding:"9px 12px",color:"#2A2218",fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit",...(p.style||{})}}>{children}</select>
+    </div>
+  );
+}
+
+function Btn({variant="primary",style:s,...p}){
+  const V={
+    primary:{background:"#00A87A",color:"#FAF7F2",border:"none",fontWeight:700},
+    ghost:{background:"transparent",color:"#7A6E5C",border:"1px solid #C4BDAF"},
+    amber:{background:"#FFF8EC",color:"#C07A00",border:"1px solid #C07A0050"},
+    danger:{background:"#FFF0F0",color:"#D44040",border:"1px solid #D4404050"},
+  };
+  return <button {...p} style={{padding:"9px 18px",borderRadius:8,cursor:"pointer",fontSize:13,fontFamily:"inherit",...V[variant],...(s||{})}}/>;
+}
+
+function Tag({color,children}){
+  return <span style={{fontSize:10,background:color+"28",color,borderRadius:5,padding:"2px 7px",fontWeight:700,letterSpacing:".04em",whiteSpace:"nowrap"}}>{children}</span>;
+}
+
+// ─── CARD STYLE HELPER ───────────────────────────────────────────────────────
+const card=(extra={})=>({background:"#F5F0E8",borderRadius:13,padding:"17px 18px",border:"1px solid #D0C8BA",...extra});
+
+// ─── APP ────────────────────────────────────────────────────────────────────
+export default function App(){
+  const [tab,setTab]=useState("overview");
+  const [income,setIncome]=useState(IINC);
+  const [expenses,setExpenses]=useState(IEXP);
+  const [bills,setBills]=useState(IBILLS);
+  const [cards,setCards]=useState(ICARDS);
+  const [budgets,setBudgets]=useState(IBUDGETS);
+  const [salaries,setSalaries]=useState({you:65000,partner:52000});
+  const [modal,setModal]=useState(null);
+  const [form,setForm]=useState({});
+  const ff=(k,v)=>setForm(x=>({...x,[k]:v}));
+  const closeModal=()=>{setModal(null);setForm({});};
+
+  const totalIncome=useMemo(()=>income.reduce((s,i)=>s+i.amount,0),[income]);
+  const totalExpenses=useMemo(()=>expenses.reduce((s,e)=>s+e.amount,0),[expenses]);
+  const totalBills=useMemo(()=>bills.reduce((s,b)=>s+b.amount,0),[bills]);
+  const paidBills=useMemo(()=>bills.filter(b=>b.paid).reduce((s,b)=>s+b.amount,0),[bills]);
+  const unpaidBills=totalBills-paidBills;
+  const netCash=totalIncome-totalExpenses-paidBills;
+
+  const ccCharges=useMemo(()=>{
+    const m={};cards.forEach(c=>{m[c.id]=0;});
+    expenses.forEach(e=>{const c=cards.find(x=>x.name===e.via);if(c)m[c.id]=(m[c.id]||0)+e.amount;});
+    return m;
+  },[expenses,cards]);
+
+  const availableCredit=useMemo(()=>cards.reduce((s,c)=>s+Math.max(0,c.limit-c.outstandingBalance-(ccCharges[c.id]||0)),0),[cards,ccCharges]);
+  const totalHeadroom=netCash+availableCredit;
+  const spendByCat=useMemo(()=>expenses.reduce((a,e)=>{a[e.cat]=(a[e.cat]||0)+e.amount;return a;},{}),[expenses]);
+
+  const dedYou=useMemo(()=>computeWHT(salaries.you),[salaries.you]);
+  const dedPart=useMemo(()=>computeWHT(salaries.partner),[salaries.partner]);
+  const combinedNet=dedYou.net+dedPart.net;
+  const totalDed=(dedYou.sss+dedYou.phic+dedYou.hdmf+dedYou.tax)+(dedPart.sss+dedPart.phic+dedPart.hdmf+dedPart.tax);
+
+  const upcoming=useMemo(()=>{
+    const b=bills.filter(x=>!x.paid&&x.dueDay>=DAY).map(x=>({key:x.id,name:x.name,amount:x.amount,dueDay:x.dueDay,type:"bill"}));
+    const c=cards.map(x=>({key:x.id,name:x.name+" (min.)",amount:Math.max((x.statementBalance+(ccCharges[x.id]||0))*0.03,500),dueDay:x.dueDay,type:"cc"})).filter(x=>x.dueDay>=DAY);
+    return [...b,...c].sort((a,z)=>a.dueDay-z.dueDay);
+  },[bills,cards,ccCharges]);
+
+  const addIncome=()=>{
+    if(!form.desc||!form.amount)return;
+    setIncome(x=>[...x,{id:"i"+Date.now(),desc:form.desc,amount:+form.amount,date:form.date||todayStr(),type:form.type||"salary",earner:form.earner||"You",via:form.via||"Bank Transfer"}]);
+    closeModal();
+  };
+  const addExpense=()=>{
+    if(!form.desc||!form.amount)return;
+    const exp={id:"e"+Date.now(),desc:form.desc,amount:+form.amount,date:form.date||todayStr(),cat:form.cat||"other",via:form.via||"Cash",earner:form.earner||"You"};
+    setExpenses(x=>[...x,exp]);
+    const c=cards.find(c=>c.name===form.via);
+    if(c)setCards(cs=>cs.map(x=>x.id===c.id?{...x,outstandingBalance:x.outstandingBalance+exp.amount}:x));
+    closeModal();
+  };
+  const delExpense=id=>{
+    const exp=expenses.find(e=>e.id===id);
+    if(exp){const c=cards.find(x=>x.name===exp.via);if(c)setCards(cs=>cs.map(x=>x.id===c.id?{...x,outstandingBalance:Math.max(0,x.outstandingBalance-exp.amount)}:x));}
+    setExpenses(x=>x.filter(e=>e.id!==id));
+  };
+  const addBill=()=>{
+    if(!form.name||!form.amount)return;
+    setBills(x=>[...x,{id:"b"+Date.now(),name:form.name,amount:+form.amount,dueDay:+form.dueDay||15,paid:false,cat:form.cat||"utilities"}]);
+    closeModal();
+  };
+  const addCard=()=>{
+    if(!form.name||!form.limit)return;
+    const pal=["#00956A","#C81E7A","#C07A00","#901EC0","#1E9050"];
+    setCards(x=>[...x,{id:"cc"+Date.now(),name:form.name,bank:form.bank||"",limit:+form.limit,statementBalance:+form.stmtBal||0,outstandingBalance:+form.stmtBal||0,cutDay:+form.cutDay||25,dueDay:+form.dueDay||20,color:pal[x.length%pal.length]}]);
+    closeModal();
+  };
+  const toggleBill=id=>setBills(x=>x.map(b=>b.id===id?{...b,paid:!b.paid}:b));
+
+  const TABS=[
+    {id:"overview",icon:"◈",label:"Overview"},
+    {id:"transactions",icon:"⇅",label:"Transactions"},
+    {id:"bills",icon:"📋",label:"Bills"},
+    {id:"credit",icon:"💳",label:"Credit Cards"},
+    {id:"budget",icon:"⬡",label:"Budget"},
+    {id:"analysis",icon:"📊",label:"Income Analysis"},
+  ];
+
+  return(
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{background:#EDE5D8;font-family:'Inter',sans-serif;color:#2A2218;min-height:100vh}
+        ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#EDE5D8}::-webkit-scrollbar-thumb{background:#C4BDAF;border-radius:3px}
+        input::placeholder{color:#C0B8A8} select option{background:#F5F0E8} button:hover{opacity:.82}
+      `}</style>
+
+      <div style={{display:"flex",minHeight:"100vh"}}>
+
+        {/* ── SIDEBAR ── */}
+        <aside style={{width:210,background:"#E4DDD0",borderRight:"1px solid #D0C8BA",display:"flex",flexDirection:"column",padding:"20px 0",position:"sticky",top:0,height:"100vh",flexShrink:0}}>
+          <div style={{padding:"0 18px 20px",display:"flex",alignItems:"center",gap:9}}>
+            <div style={{width:34,height:34,borderRadius:9,background:"linear-gradient(135deg,#00A87A,#0044CC)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:800,color:"#fff"}}>₱</div>
+            <div>
+              <div style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:14,color:"#2A2218"}}>PesoTrack</div>
+              <div style={{fontSize:10,color:"#7A6E5C"}}>DINK Edition · Jun 2025</div>
+            </div>
+          </div>
+          <nav style={{flex:1,padding:"0 10px"}}>
+            {TABS.map(t=>(
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:9,width:"100%",padding:"9px 10px",borderRadius:8,border:"none",cursor:"pointer",background:tab===t.id?"#D8D2C4":"transparent",color:tab===t.id?"#2A2218":"#7A6E5C",fontFamily:"Inter",fontSize:13,fontWeight:tab===t.id?600:400,marginBottom:2,textAlign:"left",borderLeft:tab===t.id?"2px solid #00956A":"2px solid transparent"}}>
+                <span style={{fontSize:14,width:20,textAlign:"center"}}>{t.icon}</span>{t.label}
+              </button>
+            ))}
+          </nav>
+          <div style={{padding:"14px 18px",borderTop:"1px solid #D0C8BA"}}>
+            <div style={{fontSize:10,color:"#7A6E5C",textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>Net Cash</div>
+            <div style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:22,color:netCash>=0?"#00956A":"#D44040"}}>{peso(netCash)}</div>
+            <div style={{fontSize:10,color:"#7A6E5C",marginTop:2}}>after expenses & bills</div>
+          </div>
+        </aside>
+
+        {/* ── MAIN ── */}
+        <main style={{flex:1,padding:24,overflowY:"auto",minWidth:0}}>
+
+          {/* ═══ OVERVIEW ═══ */}
+          {tab==="overview"&&(
+            <div>
+              <h1 style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:24,letterSpacing:"-0.02em",marginBottom:2}}>Good day, You & Partner 💑</h1>
+              <p style={{color:"#7A6E5C",fontSize:13,marginBottom:20}}>Household snapshot · June 2025</p>
+
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:18}}>
+                {[
+                  {label:"Combined Income",val:peso(totalIncome),sub:`${income.length} sources`,color:"#00956A"},
+                  {label:"Total Expenses",val:peso(totalExpenses),sub:`${expenses.length} items`,color:"#D44040"},
+                  {label:"Bills Remaining",val:peso(unpaidBills),sub:`${bills.filter(b=>!b.paid).length} unpaid`,color:"#C07A00"},
+                  {label:"Combined Net",val:peso(combinedNet),sub:"after gov't deductions",color:"#5A5FE0"},
+                ].map(k=>(
+                  <div key={k.label} style={card()}>
+                    <div style={{fontSize:10,color:"#7A6E5C",textTransform:"uppercase",letterSpacing:".06em",marginBottom:7}}>{k.label}</div>
+                    <div style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:21,color:k.color,lineHeight:1}}>{k.val}</div>
+                    <div style={{fontSize:11,color:"#7A6E5C",marginTop:5}}>{k.sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{...card({padding:"20px 24px",marginBottom:18}),background:"linear-gradient(135deg,#EAE4D8,#EDE7DB)"}}>
+                <div style={{fontSize:11,color:"#7A7060",textTransform:"uppercase",letterSpacing:".07em",marginBottom:6}}>💡 Financial Headroom</div>
+                <div style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:30,color:totalHeadroom>0?"#00956A":"#D44040",letterSpacing:"-0.03em",lineHeight:1,marginBottom:5}}>
+                  {totalHeadroom<0&&"−"}{peso(Math.abs(totalHeadroom))}
+                </div>
+                <div style={{fontSize:12,color:"#7A6E5C",marginBottom:16}}>Net cash + available credit — what you can safely spend</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+                  {[{label:"Net Cash",val:peso(netCash),color:"#00956A"},{label:"Avail. Credit",val:peso(availableCredit),color:"#5A5FE0"},{label:"Total",val:peso(totalHeadroom),color:"#2A2218"}].map(k=>(
+                    <div key={k.label} style={{background:"#F5F0E8",borderRadius:9,padding:"11px 13px",border:"1px solid #D0C8BA"}}>
+                      <div style={{fontSize:10,color:"#7A6E5C",textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}}>{k.label}</div>
+                      <div style={{fontFamily:"Plus Jakarta Sans",fontWeight:700,fontSize:15,color:k.color}}>{k.val}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+                <div style={card()}>
+                  <div style={{fontWeight:700,fontSize:14,marginBottom:13,color:"#2A2218"}}>📅 Upcoming Payments</div>
+                  {upcoming.slice(0,6).map(u=>(
+                    <div key={u.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #E8E2D8"}}>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600}}>{u.name}</div>
+                        <div style={{fontSize:11,color:"#7A6E5C"}}>Due Jun {u.dueDay}</div>
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontWeight:700,color:"#C07A00",fontSize:13}}>{peso(u.amount,2)}</div>
+                        <Tag color={u.type==="cc"?"#5A5FE0":"#C07A00"}>{u.type==="cc"?"CC Min":"Bill"}</Tag>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={card()}>
+                  <div style={{fontWeight:700,fontSize:14,marginBottom:13,color:"#2A2218"}}>🗂 Spending by Category</div>
+                  {Object.entries(spendByCat).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([cat,amt])=>{
+                    const info=ci(cat);
+                    return(
+                      <div key={cat} style={{marginBottom:9}}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                          <span style={{fontSize:12}}>{info.i} {info.l}</span>
+                          <span style={{fontSize:12,fontWeight:700}}>{peso(amt)}</span>
+                        </div>
+                        <div style={{height:4,background:"#E8E2D8",borderRadius:4}}>
+                          <div style={{height:4,borderRadius:4,background:CC[cat]||"#505050",width:(amt/totalExpenses*100)+"%",transition:"width 1s"}}/>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ TRANSACTIONS ═══ */}
+          {tab==="transactions"&&(
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                <h2 style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:22}}>Transactions</h2>
+                <div style={{display:"flex",gap:8}}>
+                  <Btn onClick={()=>setModal("income")}>+ Income</Btn>
+                  <Btn variant="amber" onClick={()=>setModal("expense")}>+ Expense</Btn>
+                </div>
+              </div>
+
+              <div style={{fontSize:11,color:"#7A6E5C",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",marginBottom:9}}>Income</div>
+              {income.map(i=>(
+                <div key={i.id} style={{...card({padding:"12px 16px",marginBottom:8}),display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:11}}>
+                    <div style={{width:34,height:34,borderRadius:9,background:"#00956A20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>
+                      {ITYPES.find(t=>t.v===i.type)?.l.split(" ")[0]||"💼"}
+                    </div>
+                    <div>
+                      <div style={{fontWeight:600,fontSize:13}}>{i.desc}</div>
+                      <div style={{fontSize:11,color:"#7A6E5C"}}>{i.date} · {i.earner} · {i.via}</div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontFamily:"Plus Jakarta Sans",fontWeight:700,fontSize:15,color:"#00956A"}}>+{peso(i.amount)}</span>
+                    <button onClick={()=>setIncome(x=>x.filter(e=>e.id!==i.id))} style={{background:"none",border:"none",color:"#C4BDAF",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+                  </div>
+                </div>
+              ))}
+
+              <div style={{fontSize:11,color:"#7A6E5C",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",margin:"18px 0 9px"}}>Expenses</div>
+              {expenses.map(e=>{
+                const info=ci(e.cat);
+                return(
+                  <div key={e.id} style={{...card({padding:"12px 16px",marginBottom:8}),display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:11}}>
+                      <div style={{width:34,height:34,borderRadius:9,background:(CC[e.cat]||"#505050")+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>{info.i}</div>
+                      <div>
+                        <div style={{fontWeight:600,fontSize:13}}>{e.desc}</div>
+                        <div style={{fontSize:11,color:"#7A6E5C"}}>{e.date} · {e.earner} · {e.via}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:9}}>
+                      <Tag color={CC[e.cat]||"#505050"}>{info.l}</Tag>
+                      <span style={{fontFamily:"Plus Jakarta Sans",fontWeight:700,fontSize:15,color:"#D44040"}}>−{peso(e.amount)}</span>
+                      <button onClick={()=>delExpense(e.id)} style={{background:"none",border:"none",color:"#C4BDAF",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ═══ BILLS ═══ */}
+          {tab==="bills"&&(
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <h2 style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:22}}>Monthly Bills</h2>
+                <Btn onClick={()=>setModal("bill")}>+ Add Bill</Btn>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:18}}>
+                {[
+                  {label:"Total",val:peso(totalBills),color:"#2A2218"},
+                  {label:"Paid",val:peso(paidBills),color:"#00956A"},
+                  {label:"Unpaid",val:peso(unpaidBills),color:"#D44040"},
+                  {label:"Progress",val:`${bills.filter(b=>b.paid).length} / ${bills.length}`,color:"#5A5FE0"},
+                ].map(k=>(
+                  <div key={k.label} style={card()}>
+                    <div style={{fontSize:10,color:"#7A6E5C",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>{k.label}</div>
+                    <div style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:21,color:k.color}}>{k.val}</div>
+                  </div>
+                ))}
+              </div>
+              {bills.map(b=>{
+                const info=ci(b.cat);
+                return(
+                  <div key={b.id} style={{...card({padding:"13px 18px",marginBottom:9}),display:"flex",justifyContent:"space-between",alignItems:"center",opacity:b.paid?.7:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:11}}>
+                      <button onClick={()=>toggleBill(b.id)} style={{width:24,height:24,borderRadius:6,border:`2px solid ${b.paid?"#00956A":"#C4BDAF"}`,background:b.paid?"#00956A":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        {b.paid&&<span style={{color:"#fff",fontSize:11,fontWeight:700}}>✓</span>}
+                      </button>
+                      <div style={{width:32,height:32,borderRadius:8,background:(CC[b.cat]||"#505050")+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>{info.i}</div>
+                      <div>
+                        <div style={{fontWeight:600,fontSize:14,textDecoration:b.paid?"line-through":"none",color:b.paid?"#9E9282":"#2A2218"}}>{b.name}</div>
+                        <div style={{fontSize:11,color:"#7A6E5C"}}>Due Jun {b.dueDay}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:9}}>
+                      <span style={{fontFamily:"Plus Jakarta Sans",fontWeight:700,fontSize:15,color:b.paid?"#00956A":"#C07A00"}}>{peso(b.amount)}</span>
+                      <Tag color={b.paid?"#00956A":"#C07A00"}>{b.paid?"Paid":"Unpaid"}</Tag>
+                      <button onClick={()=>setBills(x=>x.filter(x2=>x2.id!==b.id))} style={{background:"none",border:"none",color:"#C4BDAF",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ═══ CREDIT CARDS ═══ */}
+          {tab==="credit"&&(
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                <h2 style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:22}}>Credit Cards</h2>
+                <Btn onClick={()=>setModal("card")}>+ Add Card</Btn>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(290px,1fr))",gap:16}}>
+                {cards.map(c=>{
+                  const thisMonth=ccCharges[c.id]||0;
+                  const total=c.outstandingBalance;
+                  const avail=Math.max(0,c.limit-total);
+                  const pct=Math.min(100,total/c.limit*100);
+                  const minDue=Math.max(total*0.03,500);
+                  return(
+                    <div key={c.id} style={card({padding:0,overflow:"hidden"})}>
+                      <div style={{background:`linear-gradient(135deg,${c.color}DD,${c.color}99)`,padding:"18px 22px",color:"#fff"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                          <div>
+                            <div style={{fontSize:10,opacity:.75,letterSpacing:".08em",textTransform:"uppercase",marginBottom:3}}>{c.bank}</div>
+                            <div style={{fontFamily:"Plus Jakarta Sans",fontWeight:700,fontSize:17}}>{c.name}</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontSize:10,opacity:.75,marginBottom:2}}>Limit</div>
+                            <div style={{fontFamily:"Plus Jakarta Sans",fontWeight:700,fontSize:15}}>{peso(c.limit)}</div>
+                          </div>
+                        </div>
+                        <div style={{marginTop:16}}>
+                          <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                            <span style={{fontSize:11,opacity:.75}}>Used: {peso(total)}</span>
+                            <span style={{fontSize:11,opacity:.75}}>Avail: {peso(avail)}</span>
+                          </div>
+                          <div style={{height:5,background:"rgba(255,255,255,.25)",borderRadius:5}}>
+                            <div style={{height:5,borderRadius:5,background:"rgba(255,255,255,.85)",width:pct+"%",transition:"width 1s"}}/>
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{padding:"14px 22px"}}>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                          {[
+                            {label:"Statement",val:peso(c.statementBalance)},
+                            {label:"This Month",val:peso(thisMonth),color:"#C07A00"},
+                            {label:"Min. Due",val:peso(minDue,2),color:"#D44040"},
+                          ].map(k=>(
+                            <div key={k.label}>
+                              <div style={{fontSize:10,color:"#7A6E5C",marginBottom:3}}>{k.label}</div>
+                              <div style={{fontWeight:700,fontSize:13,color:k.color||"#2A2218"}}>{k.val}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{display:"flex",justifyContent:"space-between",marginTop:11,paddingTop:11,borderTop:"1px solid #E8E2D8",fontSize:11,color:"#7A6E5C"}}>
+                          <span>Cut-off: Day {c.cutDay}</span>
+                          <span>Due: Day {c.dueDay}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ BUDGET ═══ */}
+          {tab==="budget"&&(
+            <div>
+              <h2 style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:22,marginBottom:4}}>Budget Tracker</h2>
+              <p style={{color:"#7A6E5C",fontSize:13,marginBottom:18}}>Tap a card to edit the budget for that category.</p>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(155px,1fr))",gap:13}}>
+                {Object.entries(budgets).map(([cat,budget])=>{
+                  const spent=spendByCat[cat]||0;
+                  const pct=budget>0?spent/budget*100:0;
+                  const info=ci(cat);
+                  return(
+                    <div key={cat} style={{...card({padding:"18px 16px"}),textAlign:"center",cursor:"pointer"}} onClick={()=>{setModal("editBudget");setForm({cat,budget});}}>
+                      <div style={{position:"relative",width:76,height:76,margin:"0 auto 11px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        <Ring pct={pct} color={CC[cat]||"#505050"}/>
+                        <div style={{position:"absolute",fontSize:22}}>{info.i}</div>
+                      </div>
+                      <div style={{fontWeight:600,fontSize:12,marginBottom:2}}>{info.l}</div>
+                      <div style={{fontSize:11,color:pct>100?"#D44040":"#7A6E5C"}}>{peso(spent)} / {peso(budget)}</div>
+                      <div style={{fontSize:10,color:pct>100?"#D44040":"#00956A",fontWeight:700,marginTop:2}}>{Math.round(pct)}%</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ INCOME ANALYSIS ═══ */}
+          {tab==="analysis"&&(
+            <div>
+              <h2 style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:22,marginBottom:4}}>Income Analysis</h2>
+              <p style={{color:"#7A6E5C",fontSize:13,marginBottom:18}}>PH government deductions — SSS, PhilHealth, Pag-IBIG, WHT</p>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:18}}>
+                {[
+                  {name:"You",salary:salaries.you,ded:dedYou,key:"you"},
+                  {name:"Partner",salary:salaries.partner,ded:dedPart,key:"partner"},
+                ].map(p=>(
+                  <div key={p.key} style={card()}>
+                    <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>👤 {p.name}</div>
+                    <Inp label="Monthly Gross (₱)" type="number" value={salaries[p.key]} onChange={e=>setSalaries(x=>({...x,[p.key]:+e.target.value}))}/>
+                    {[
+                      {label:"SSS",val:p.ded.sss,color:"#5A5FE0"},
+                      {label:"PhilHealth",val:p.ded.phic,color:"#00956A"},
+                      {label:"Pag-IBIG",val:p.ded.hdmf,color:"#C07A00"},
+                      {label:"Withholding Tax",val:p.ded.tax,color:"#D44040"},
+                    ].map(d=>(
+                      <div key={d.label} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #E8E2D8"}}>
+                        <span style={{fontSize:13}}>{d.label}</span>
+                        <span style={{fontWeight:700,fontSize:13,color:d.color}}>−{peso(d.val,2)}</span>
+                      </div>
+                    ))}
+                    <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",marginTop:4}}>
+                      <span style={{fontWeight:700}}>Net Take-Home</span>
+                      <span style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:16,color:"#00956A"}}>{peso(p.ded.net,2)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={card({padding:"20px 24px"})}>
+                <div style={{fontWeight:700,fontSize:15,marginBottom:15}}>🏠 Household Combined</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:13}}>
+                  {[
+                    {label:"Combined Gross",val:peso(salaries.you+salaries.partner),color:"#2A2218"},
+                    {label:"Total Deductions",val:peso(totalDed),color:"#D44040"},
+                    {label:"Combined Net",val:peso(combinedNet),color:"#00956A"},
+                  ].map(k=>(
+                    <div key={k.label} style={{background:"#EDE5D8",borderRadius:10,padding:"13px 15px",border:"1px solid #D0C8BA"}}>
+                      <div style={{fontSize:10,color:"#7A6E5C",textTransform:"uppercase",letterSpacing:".05em",marginBottom:5}}>{k.label}</div>
+                      <div style={{fontFamily:"Plus Jakarta Sans",fontWeight:800,fontSize:19,color:k.color}}>{k.val}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </main>
+      </div>
+
+      {/* ── MODALS ── */}
+      {modal==="income"&&(
+        <Modal title="Add Income" onClose={closeModal}>
+          <Inp label="Description" value={form.desc||""} onChange={e=>ff("desc",e.target.value)} placeholder="e.g. Monthly Salary"/>
+          <Inp label="Amount (₱)" type="number" value={form.amount||""} onChange={e=>ff("amount",e.target.value)} placeholder="0"/>
+          <Inp label="Date" type="date" value={form.date||todayStr()} onChange={e=>ff("date",e.target.value)}/>
+          <Sel label="Type" value={form.type||"salary"} onChange={e=>ff("type",e.target.value)}>
+            {ITYPES.map(t=><option key={t.v} value={t.v}>{t.l}</option>)}
+          </Sel>
+          <Sel label="Earner" value={form.earner||"You"} onChange={e=>ff("earner",e.target.value)}>
+            <option>You</option><option>Partner</option><option>Joint</option>
+          </Sel>
+          <Sel label="Via" value={form.via||"Bank Transfer"} onChange={e=>ff("via",e.target.value)}>
+            {PAY.map(m=><option key={m}>{m}</option>)}
+          </Sel>
+          <div style={{display:"flex",gap:8,marginTop:6}}>
+            <Btn onClick={addIncome} style={{flex:1}}>Add Income</Btn>
+            <Btn variant="ghost" onClick={closeModal}>Cancel</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {modal==="expense"&&(
+        <Modal title="Add Expense" onClose={closeModal}>
+          <Inp label="Description" value={form.desc||""} onChange={e=>ff("desc",e.target.value)} placeholder="e.g. Grab Ride"/>
+          <Inp label="Amount (₱)" type="number" value={form.amount||""} onChange={e=>ff("amount",e.target.value)} placeholder="0"/>
+          <Inp label="Date" type="date" value={form.date||todayStr()} onChange={e=>ff("date",e.target.value)}/>
+          <Sel label="Category" value={form.cat||"other"} onChange={e=>ff("cat",e.target.value)}>
+            {CATS.map(c=><option key={c.v} value={c.v}>{c.i} {c.l}</option>)}
+          </Sel>
+          <Sel label="Paid Via" value={form.via||"Cash"} onChange={e=>ff("via",e.target.value)}>
+            {PAY.map(m=><option key={m}>{m}</option>)}
+            {cards.map(c=><option key={c.id}>{c.name}</option>)}
+          </Sel>
+          <Sel label="Earner" value={form.earner||"You"} onChange={e=>ff("earner",e.target.value)}>
+            <option>You</option><option>Partner</option><option>Joint</option>
+          </Sel>
+          <div style={{display:"flex",gap:8,marginTop:6}}>
+            <Btn variant="amber" onClick={addExpense} style={{flex:1}}>Add Expense</Btn>
+            <Btn variant="ghost" onClick={closeModal}>Cancel</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {modal==="bill"&&(
+        <Modal title="Add Bill" onClose={closeModal}>
+          <Inp label="Bill Name" value={form.name||""} onChange={e=>ff("name",e.target.value)} placeholder="e.g. Meralco"/>
+          <Inp label="Amount (₱)" type="number" value={form.amount||""} onChange={e=>ff("amount",e.target.value)} placeholder="0"/>
+          <Inp label="Due Day (of month)" type="number" value={form.dueDay||""} onChange={e=>ff("dueDay",e.target.value)} placeholder="15"/>
+          <Sel label="Category" value={form.cat||"utilities"} onChange={e=>ff("cat",e.target.value)}>
+            {CATS.map(c=><option key={c.v} value={c.v}>{c.i} {c.l}</option>)}
+          </Sel>
+          <div style={{display:"flex",gap:8,marginTop:6}}>
+            <Btn onClick={addBill} style={{flex:1}}>Add Bill</Btn>
+            <Btn variant="ghost" onClick={closeModal}>Cancel</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {modal==="card"&&(
+        <Modal title="Add Credit Card" onClose={closeModal}>
+          <Inp label="Card Name" value={form.name||""} onChange={e=>ff("name",e.target.value)} placeholder="e.g. BPI Gold"/>
+          <Inp label="Bank" value={form.bank||""} onChange={e=>ff("bank",e.target.value)} placeholder="e.g. BPI"/>
+          <Inp label="Credit Limit (₱)" type="number" value={form.limit||""} onChange={e=>ff("limit",e.target.value)} placeholder="50000"/>
+          <Inp label="Statement Balance (₱)" type="number" value={form.stmtBal||""} onChange={e=>ff("stmtBal",e.target.value)} placeholder="0"/>
+          <Inp label="Cut-off Day" type="number" value={form.cutDay||""} onChange={e=>ff("cutDay",e.target.value)} placeholder="25"/>
+          <Inp label="Due Day" type="number" value={form.dueDay||""} onChange={e=>ff("dueDay",e.target.value)} placeholder="20"/>
+          <div style={{display:"flex",gap:8,marginTop:6}}>
+            <Btn onClick={addCard} style={{flex:1}}>Add Card</Btn>
+            <Btn variant="ghost" onClick={closeModal}>Cancel</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {modal==="editBudget"&&(
+        <Modal title={`Edit Budget — ${ci(form.cat)?.l}`} onClose={closeModal}>
+          <Inp label="Monthly Budget (₱)" type="number" value={form.budget||""} onChange={e=>ff("budget",e.target.value)} placeholder="0"/>
+          <div style={{display:"flex",gap:8,marginTop:6}}>
+            <Btn onClick={()=>{setBudgets(x=>({...x,[form.cat]:+form.budget}));closeModal();}} style={{flex:1}}>Save</Btn>
+            <Btn variant="ghost" onClick={closeModal}>Cancel</Btn>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
