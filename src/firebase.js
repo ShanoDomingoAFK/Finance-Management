@@ -10,7 +10,7 @@ const firebaseConfig = {
   appId: "1:1076043265210:web:364b7d5caee35724a53e83",
 };
 
-export const HOUSEHOLD_ID = "change-me-to-something-unique";
+export const HOUSEHOLD_ID = "ShanoPesoTrack";
 
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
