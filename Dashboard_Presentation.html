@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VAT Compliance Purchase Dashboard — Presentation</title>
+<style>
+  :root{
+    --bg:#0b1020;--bg2:#0e152b;--surface:#141d36;--surface2:#101831;--border:#26324f;
+    --text:#eaf0fb;--text2:#aebbd6;--text3:#7587a8;--accent:#5b78ff;--accent2:#8aa6ff;
+    --ok:#34d399;--warn:#fbbf24;--err:#f87171;--journal:#60a5fa;--adjust:#f472b6;
+    --r:16px;--e2:0 8px 24px rgba(0,0,0,.35);--e3:0 18px 50px rgba(0,0,0,.5);
+    --font:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:var(--font);color:var(--text);background:var(--bg);
+    background-image:radial-gradient(60vw 60vw at 10% -10%,#16204400,#152045 0,transparent 60%),
+      radial-gradient(50vw 50vw at 100% 0,#1b2a5e33,transparent 55%);}
+  a{color:inherit;text-decoration:none}
+  .app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+  /* Sidebar nav */
+  .nav{position:sticky;top:0;height:100vh;padding:26px 18px;background:rgba(16,24,49,.7);
+    backdrop-filter:blur(14px);border-right:1px solid var(--border);overflow:auto}
+  .brand{display:flex;align-items:center;gap:11px;margin-bottom:22px}
+  .logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-weight:900;
+    background:linear-gradient(140deg,var(--accent),var(--accent2));box-shadow:var(--e2)}
+  .brand b{display:block;font-size:15px}.brand span{font-size:11px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase}
+  .nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;color:var(--text2);
+    font-size:13.5px;font-weight:600;margin-bottom:3px;transition:.18s;cursor:pointer}
+  .nav a:hover{background:var(--surface);color:var(--text)}
+  .nav a.active{background:linear-gradient(120deg,var(--accent),var(--accent2));color:#fff;box-shadow:var(--e2)}
+  .nav .dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.6}
+  .nav .note{margin-top:18px;padding:11px;border:1px dashed var(--border);border-radius:12px;font-size:11px;color:var(--text3);line-height:1.5}
+  /* Content */
+  .main{padding:0}
+  section{padding:64px 56px;border-bottom:1px solid var(--border);opacity:0;transform:translateY(18px);
+    transition:opacity .6s ease,transform .6s ease}
+  section.in{opacity:1;transform:none}
+  .eyebrow{color:var(--accent2);font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:12px}
+  h1{font-size:40px;margin:8px 0 10px;line-height:1.1}
+  h2{font-size:26px;margin:6px 0 18px}
+  h3{font-size:16px;margin:0 0 6px}
+  p{color:var(--text2);line-height:1.65;max-width:820px}
+  .hero{background:linear-gradient(160deg,#152149,#101a36 60%)}
+  .pill{display:inline-flex;gap:7px;align-items:center;background:var(--surface);border:1px solid var(--border);
+    border-radius:999px;padding:7px 14px;font-size:12.5px;color:var(--text2);font-weight:600}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .grid{display:grid;gap:16px;margin-top:22px}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 22px;
+    box-shadow:var(--e2);transition:.25s;position:relative;overflow:hidden}
+  .card:hover{transform:translateY(-4px);box-shadow:var(--e3);border-color:#33436b}
+  .card::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--accent),transparent)}
+  .card .ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:20px;
+    background:var(--surface2);border:1px solid var(--border);margin-bottom:12px}
+  .card p{font-size:13.5px;margin:0}
+  .kpi{font-size:30px;font-weight:800;font-family:var(--font)}
+  .kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:22px}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--e2)}
+  .kpi-card small{color:var(--text3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+  /* Flow */
+  .flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:24px;counter-reset:s}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative}
+  .step::before{counter-increment:s;content:counter(s);position:absolute;top:-12px;left:18px;width:26px;height:26px;
+    border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;
+    background:linear-gradient(140deg,var(--accent),var(--accent2));box-shadow:var(--e2)}
+  .step h3{margin-top:6px;font-size:14px}.step p{font-size:12.5px}
+  /* status chips */
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:800;border:1px solid}
+  .chip::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .c-ok{color:var(--ok);border-color:#1f6b4d;background:#0f2a20}
+  .c-warn{color:var(--warn);border-color:#6b551f;background:#2a230f}
+  .c-err{color:var(--err);border-color:#6b2a2a;background:#2a1414}
+  .c-rev{color:var(--text3);border-color:#34425f;background:#141d33}
+  .c-j{color:var(--journal);border-color:#274a8c;background:#10203f}
+  .c-a{color:var(--adjust);border-color:#6b2750;background:#2a1424}
+  ul.clean{list-style:none;padding:0;margin:14px 0 0}
+  ul.clean li{padding:9px 0 9px 26px;position:relative;color:var(--text2);font-size:14px;border-bottom:1px solid var(--border)}
+  ul.clean li::before{content:"";position:absolute;left:4px;top:15px;width:8px;height:8px;border-radius:2px;background:var(--accent2)}
+  .tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:999px;
+    background:#2a230f;color:var(--warn);border:1px solid #6b551f;margin-left:8px}
+  .foot{padding:30px 56px;color:var(--text3);font-size:12px}
+  .topbtn{position:fixed;right:22px;bottom:22px;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
+    background:linear-gradient(140deg,var(--accent),var(--accent2));color:#fff;box-shadow:var(--e3);cursor:pointer;font-size:20px;border:0;opacity:0;pointer-events:none;transition:.3s}
+  .topbtn.show{opacity:1;pointer-events:auto}
+  @media(max-width:900px){.app{grid-template-columns:1fr}.nav{position:static;height:auto;display:flex;flex-wrap:wrap;gap:6px;overflow:visible}
+    .nav .brand{width:100%}.nav a{margin:0}.nav .note{display:none}section{padding:42px 24px}h1{font-size:30px}}
+  @media(prefers-reduced-motion:reduce){section{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- NAV -->
+  <aside class="nav">
+    <div class="brand"><div class="logo">VC</div><div><b>VAT Compliance</b><span>Purchase Dashboard</span></div></div>
+    <a data-go="exec" class="active"><span class="dot"></span> Executive Summary</a>
+    <a data-go="workflow"><span class="dot"></span> Workflow Overview</a>
+    <a data-go="modules"><span class="dot"></span> Modules</a>
+    <a data-go="features"><span class="dot"></span> Key Features</a>
+    <a data-go="calc"><span class="dot"></span> Calculations</a>
+    <a data-go="statuses"><span class="dot"></span> Verification</a>
+    <a data-go="exports"><span class="dot"></span> BIR Exports</a>
+    <a data-go="flow"><span class="dot"></span> Process Flow</a>
+    <a data-go="sop"><span class="dot"></span> SOP Summary</a>
+    <a data-go="benefits"><span class="dot"></span> Compliance Benefits</a>
+    <a data-go="limits"><span class="dot"></span> Limits & Next Steps</a>
+    <div class="note">Accurate to the actual code. Items marked <b style="color:var(--warn)">Planned</b> are not yet implemented.</div>
+  </aside>
+
+  <main class="main">
+    <!-- EXEC -->
+    <section id="exec" class="hero in">
+      <div class="eyebrow">Executive Summary</div>
+      <h1>From purchase records to BIR-ready compliance files</h1>
+      <p>A browser-based dashboard that consolidates purchase transactions, input VAT, and expanded
+      withholding tax for a selected fiscal year and month, lets finance verify every transaction, and
+      generates the official BIR outputs — Summary List of Purchases, QAP 1601-EQ, and the subsidiary
+      books — in both <b>Excel and DAT</b> formats. It optionally syncs to a shared cloud database.</p>
+      <div class="pills">
+        <span class="pill">📦 6 work modules</span>
+        <span class="pill">📥 QuickBooks auto-import</span>
+        <span class="pill">🧮 Auto VAT &amp; EWT</span>
+        <span class="pill">📤 SLP / QAP / Books (Excel + DAT)</span>
+        <span class="pill">🗓 Multi-year fiscal scope</span>
+        <span class="pill">☁ Optional cloud sync</span>
+      </div>
+      <div class="kgrid">
+        <div class="kpi-card"><small>Modules</small><div class="kpi">6</div></div>
+        <div class="kpi-card"><small>BIR reports</small><div class="kpi">6</div></div>
+        <div class="kpi-card"><small>Verification statuses</small><div class="kpi">6</div></div>
+        <div class="kpi-card"><small>Import types</small><div class="kpi">6</div></div>
+      </div>
+    </section>
+
+    <!-- WORKFLOW -->
+    <section id="workflow">
+      <div class="eyebrow">Workflow Overview</div>
+      <h2>One standard monthly process</h2>
+      <p>Upload the working papers, verify transactions, reconcile VAT &amp; EWT, review the Compliance
+      Summary, then export the BIR files for the selected month.</p>
+      <div class="flow">
+        <div class="step"><h3>Select scope</h3><p>Choose fiscal year &amp; month.</p></div>
+        <div class="step"><h3>Import</h3><p>Upload QuickBooks working papers (auto-detected).</p></div>
+        <div class="step"><h3>Verify</h3><p>Check each CV line &amp; set status.</p></div>
+        <div class="step"><h3>Reconcile</h3><p>Computed vs uploaded VAT/EWT balances.</p></div>
+        <div class="step"><h3>Review</h3><p>Compliance Summary by supplier / CV.</p></div>
+        <div class="step"><h3>Export</h3><p>SLP / QAP / Books — Excel &amp; DAT.</p></div>
+      </div>
+    </section>
+
+    <!-- MODULES -->
+    <section id="modules">
+      <div class="eyebrow">Modules &amp; Pages</div>
+      <h2>Six work areas, plus an admin Audit Trail</h2>
+      <div class="grid g3">
+        <div class="card"><div class="ic">📊</div><h3>Compliance Summary</h3><p>Consolidates transactions by supplier or CV with KPI cards and a status breakdown.</p></div>
+        <div class="card"><div class="ic">🧾</div><h3>Purchase Transactions</h3><p>CV-grouped lines with verification, inline edit, search, sort, and balance checks.</p></div>
+        <div class="card"><div class="ic">💧</div><h3>VAT Balances</h3><p>Uploaded input-VAT ledger reconciled to computed VAT per CV.</p></div>
+        <div class="card"><div class="ic">📈</div><h3>EWT Balances</h3><p>Uploaded withholding ledger reconciled to computed EWT per CV.</p></div>
+        <div class="card"><div class="ic">📤</div><h3>BIR Compliance Exports</h3><p>SLP, QAP 1601-EQ, and subsidiary books in Excel and DAT.</p></div>
+        <div class="card"><div class="ic">🗂</div><h3>Master Data</h3><p>VAT Categories, ATC Master (EWT rates), and Supplier Master.</p></div>
+      </div>
+      <p style="margin-top:16px"><span class="chip c-rev">Admin</span> &nbsp;An immutable <b>Audit Trail</b> of every change is available when cloud sync is enabled.</p>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features">
+      <div class="eyebrow">Key Features</div>
+      <h2>What it does for you</h2>
+      <div class="grid g3">
+        <div class="card"><div class="ic">📥</div><h3>QuickBooks auto-import</h3><p>Detects the Transaction Detail by Account, VAT Summary, and withholding reports and maps columns automatically. Template files supported too.</p></div>
+        <div class="card"><div class="ic">🗓</div><h3>Multi-year fiscal scope</h3><p>Year selector above per-year months. Years never mix; every report runs on the selected year or single month.</p></div>
+        <div class="card"><div class="ic">🧮</div><h3>Automatic tax</h3><p>VAT from the VAT Category rate; EWT from the ATC Code rate — no manual recomputation.</p></div>
+        <div class="card"><div class="ic">⚖️</div><h3>Balance reconciliation</h3><p>Computed VAT/EWT per CV vs uploaded ledger, with a rounding tolerance.</p></div>
+        <div class="card"><div class="ic">🔤</div><h3>BIR-safe characters</h3><p>Supplier text auto-sanitised for DAT; Master Data blocks unsupported characters at entry.</p></div>
+        <div class="card"><div class="ic">🔃</div><h3>Sort · search · filter</h3><p>Type-aware sorting (dates, money, status), free-text search, and status/variance filters.</p></div>
+        <div class="card"><div class="ic">☁</div><h3>Optional cloud sync</h3><p>Per-record Supabase sync, paginated loading, delete-safety guard, live multi-user updates, audit log.</p></div>
+        <div class="card"><div class="ic">📱</div><h3>Responsive</h3><p>Adapts across desktop, tablet, and mobile widths.</p></div>
+        <div class="card"><div class="ic">✍️</div><h3>Manual entry &amp; edit</h3><p>Add transactions and inline-edit CV Number / Description.</p></div>
+      </div>
+    </section>
+
+    <!-- CALC -->
+    <section id="calc">
+      <div class="eyebrow">Calculations</div>
+      <h2>How VAT, EWT, and balances are computed</h2>
+      <div class="grid g2">
+        <div class="card"><h3>VAT</h3><p><b>VAT = vatable base × VAT Category rate.</b><br>S / G / I / CG = 12%; SNQ / GNQ / uncoded = 0%. The category also splits amounts into goods, services, capital goods, and exempt for the SLP.</p></div>
+        <div class="card"><h3>EWT</h3><p><b>EWT = amount × ATC Code rate.</b><br>Rates come from the ATC Master. A missing rate is flagged for review.</p></div>
+        <div class="card"><h3>Balance check</h3><p>Computed Purchase VAT and EWT per CV are compared with the uploaded ledger balances; differences within a small rounding tolerance are "Balanced", otherwise "Review balances".</p></div>
+        <div class="card"><h3>Compliance score</h3><p>Each CV group rolls up its line statuses into an overall status and score for the Compliance Summary.</p></div>
+      </div>
+    </section>
+
+    <!-- STATUSES -->
+    <section id="statuses">
+      <div class="eyebrow">Verification</div>
+      <h2>Six transaction statuses</h2>
+      <p>Each purchase line carries a verification status that drives the Compliance Summary and the exports.</p>
+      <div class="pills" style="margin-top:20px">
+        <span class="chip c-ok">Compliant</span>
+        <span class="chip c-warn">Without Invoice</span>
+        <span class="chip c-err">Non-Compliant</span>
+        <span class="chip c-rev">Unreviewed</span>
+        <span class="chip c-j">Journal Entry</span>
+        <span class="chip c-a">Adjusting Entry</span>
+      </div>
+      <ul class="clean">
+        <li><b>Journal Entry</b> — intentional posting; valid without invoice, VAT category, ATC, or TIN (not flagged incomplete).</li>
+        <li><b>Adjusting Entry</b> — same field exemptions, and <b>excluded from all BIR Compliance Exports</b>.</li>
+      </ul>
+    </section>
+
+    <!-- EXPORTS -->
+    <section id="exports">
+      <div class="eyebrow">BIR Compliance Exports</div>
+      <h2>Six regulator outputs — Excel &amp; DAT</h2>
+      <div class="grid g3">
+        <div class="card"><h3>Summary List of Purchases</h3><p>Excel &amp; DAT, with correct individual vs non-individual taxpayer formatting.</p></div>
+        <div class="card"><h3>QAP 1601-EQ Schedule 1</h3><p>Excel &amp; DAT alphabetical list of payees subject to expanded withholding tax.</p></div>
+        <div class="card"><h3>Subsidiary Purchase Book</h3><p>Excel subsidiary purchase journal layout.</p></div>
+        <div class="card"><h3>Cash Disbursement Book</h3><p>Excel disbursement journal layout.</p></div>
+        <div class="card"><h3>Pre-export validation</h3><p>Blocks export when supplier TIN/name/address is incomplete and lists the lines to fix.</p></div>
+        <div class="card"><h3>Character sanitisation</h3><p>Supplier text is cleaned to the BIR-allowed set so DAT files are accepted.</p></div>
+      </div>
+    </section>
+
+    <!-- FLOW -->
+    <section id="flow">
+      <div class="eyebrow">Process Flow</div>
+      <h2>Roles &amp; checkpoints</h2>
+      <div class="flow">
+        <div class="step"><h3>Preparer</h3><p>Upload working papers, add/correct lines, maintain master data.</p></div>
+        <div class="step"><h3>Reviewer</h3><p>Verify VAT/EWT reconciliation and set statuses.</p></div>
+        <div class="step"><h3>Approver</h3><p>Sign off the period before exports are filed.</p></div>
+        <div class="step"><h3>Admin / IT</h3><p>Manage cloud sync, monitor the Audit Trail, manage DB settings.</p></div>
+      </div>
+    </section>
+
+    <!-- SOP -->
+    <section id="sop">
+      <div class="eyebrow">SOP Summary</div>
+      <h2>The monthly routine</h2>
+      <ul class="clean">
+        <li>Select the <b>fiscal year &amp; month</b>.</li>
+        <li><b>Import</b> the QuickBooks Purchase, VAT, and EWT working papers (auto-detected).</li>
+        <li><b>Verify</b> each CV line; set the verification status.</li>
+        <li><b>Reconcile</b> VAT &amp; EWT against uploaded balances; resolve "Review balances".</li>
+        <li>Maintain <b>Supplier Master / ATC / VAT Categories</b> (BIR character rule enforced).</li>
+        <li>Review the <b>Compliance Summary</b>; clear outstanding items.</li>
+        <li><b>Export</b> the required BIR reports for the single selected month.</li>
+        <li>Archive the source files; keep cloud sync current.</li>
+      </ul>
+    </section>
+
+    <!-- BENEFITS -->
+    <section id="benefits">
+      <div class="eyebrow">Compliance &amp; Operational Benefits</div>
+      <h2>Why it matters</h2>
+      <div class="grid g2">
+        <div class="card"><h3>Compliance</h3><p>BIR-ready SLP/QAP in Excel &amp; DAT, consistent VAT/EWT, per-CV reconciliation, clean DAT characters, and an audit trail (with cloud sync).</p></div>
+        <div class="card"><h3>Operational</h3><p>One monthly workflow replaces manual spreadsheets, QuickBooks uploads directly, a shared dataset across the team, and retained year-over-year history.</p></div>
+      </div>
+    </section>
+
+    <!-- LIMITS -->
+    <section id="limits">
+      <div class="eyebrow">Limitations &amp; Next Steps</div>
+      <h2>Honest status</h2>
+      <ul class="clean">
+        <li>Static front-end: when cloud sync is used, the Supabase URL &amp; publishable key live in a browser config file and can't be fully hidden without a backend.</li>
+        <li>Company filer profile (TIN/name/address for BIR headers) is a code constant today. <span class="tag">Planned</span> in-app Settings screen.</li>
+        <li>Single shared database by design; not multi-tenant.</li>
+        <li>BIR formats should be spot-checked against current RDO requirements on first use.</li>
+        <li><b>Next:</b> verify a real SLP/QAP export, optionally move sync to the company's own Supabase, then run the monthly SOP cadence.</li>
+      </ul>
+    </section>
+
+    <div class="foot">VAT Compliance Purchase Dashboard — generated from the application code. Planned items are clearly marked and not yet implemented.</div>
+  </main>
+</div>
+<button class="topbtn" id="top" title="Back to top">↑</button>
+<script>
+  const links=[...document.querySelectorAll('.nav a[data-go]')];
+  const secs=links.map(l=>document.getElementById(l.dataset.go));
+  links.forEach(l=>l.addEventListener('click',()=>document.getElementById(l.dataset.go).scrollIntoView()));
+  const io=new IntersectionObserver((es)=>{es.forEach(e=>{
+    if(e.isIntersecting){e.target.classList.add('in');
+      const id=e.target.id;links.forEach(l=>l.classList.toggle('active',l.dataset.go===id));}
+  })},{threshold:.18,rootMargin:'-10% 0px -55% 0px'});
+  secs.forEach(s=>io.observe(s));
+  const topBtn=document.getElementById('top');
+  addEventListener('scroll',()=>topBtn.classList.toggle('show',scrollY>500));
+  topBtn.addEventListener('click',()=>scrollTo({top:0,behavior:'smooth'}));
+</script>
+</body>
+</html>
